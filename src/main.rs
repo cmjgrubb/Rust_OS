@@ -9,6 +9,21 @@ use core::panic::PanicInfo;
 mod serial;
 mod vga_buffer;
 
+pub trait Testable {
+    fn run(&self) -> ();
+}
+
+impl<T> Testable for T
+where
+    T: Fn(),
+{
+    fn run(&self) {
+        serial_print!("{}...\t", core::any::type_name::<T>());
+        self();
+        serial_println!("[ok]");
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
@@ -35,19 +50,17 @@ fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
 
-pub fn test_runner(tests: &[&dyn Fn()]) {
+pub fn test_runner(tests: &[&dyn Testable]) {
     serial_println!("Running {} tests", tests.len());
     for test in tests {
-        test();
+        test.run();
     }
     exit_qemu(QemuExitCode::Success);
 }
 
 #[test_case]
 fn trivial_assertion() {
-    serial_print!("trivial_assertion . . . ");
-    assert_eq!(0, 1);
-    serial_println!("[ok]");
+    assert_eq!(1, 1);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
